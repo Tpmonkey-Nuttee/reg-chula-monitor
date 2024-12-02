@@ -73,8 +73,6 @@ for article in new_articles:
         print(f"DEBUG - Sending {article.name=} {article.url=} {article.img=}")
     else:
         webhook.execute()
-
-    if not DEBUG:
         time.sleep(5)
 
 
