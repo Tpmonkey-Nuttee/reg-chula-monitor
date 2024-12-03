@@ -1,0 +1,4 @@
+{
+    "WEBHOOK_URLS": ["url"],
+    "DEBUG_WEBHOOK_URLS": ["url for debugging"]
+}
