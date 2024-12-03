@@ -14,7 +14,9 @@ urllib3.disable_warnings()  # // sweating
 
 DEBUG = True
 URL = "https://www.reg.chula.ac.th/th/"
-WEBHOOK_URL = ""
+
+config = json.load(open("config.json", "r"))
+webhook_urls = config["DEBUG_WEBHOOK_URLS"] if DEBUG else config["WEBHOOK_URLS"]
 
 
 class Article:
@@ -22,8 +24,9 @@ class Article:
         self.name = name
         self.url = url
         self.img = re.sub(r"-\d{3}x\d{3}", "", img)
+        self.date = None
 
-    def to_png(self) -> str:
+    def to_png(self) -> None:
         # Image on Chula website is using .jpg ...
         # WHY? WHY? WHY? WHY? WHY? WHY? WHY?
         # anyways, discord said "we only accept .png" so now i gotta download
@@ -51,29 +54,38 @@ for div in soup.find_all("li", {"class": "wp-block-post"}):
             Article(img['alt'], img.parent['href'], img['src'])
         )
 
+index = 0
+for div in soup.find_all("div", {"class": "wp-block-post-date"}):
+    articles[index].date = div.time["datetime"]
+    index += 1
 
-old_articles = json.load(open('articles.json', 'r')) or []
+
+old_articles: list[str] = json.load(open('articles.json', 'r')) or []
 new_articles = [i for i in articles if i.to_hash() not in old_articles]
 
 print(f"Found {len(new_articles)} new articles!")
 
-for article in new_articles:
-    webhook = DiscordWebhook(url=WEBHOOK_URL)
+for webhook_url in webhook_urls:
+    for article in new_articles:
+        webhook = DiscordWebhook(url=webhook_url)
 
-    article.to_png()
-    with open('img.png', "rb") as f:
-        webhook.add_file(file=f.read(), filename="img.png")
+        article.to_png()
+        with open('img.png', "rb") as f:
+            webhook.add_file(file=f.read(), filename="img.png")
 
-    embed = DiscordEmbed(color="de5c8e")
-    embed.set_author(name=article.name, url=article.url)
-    embed.set_image(url="attachment://img.png")
+        embed = DiscordEmbed(color="de5c8e")
+        embed.set_author(name=article.name, url=article.url)
+        embed.set_image(url="attachment://img.png")
+        # https://github.com/lovvskillz/python-discord-webhook/blob/master/discord_webhook/webhook.py#L90
+        embed.timestamp = article.date
 
-    webhook.add_embed(embed)
-    if DEBUG:
-        print(f"DEBUG - Sending {article.name=} {article.url=} {article.img=}")
-    else:
+        webhook.add_embed(embed)
+
         webhook.execute()
-        time.sleep(5)
+        time.sleep(3)
+
+        if DEBUG:
+            break
 
 
 # Save
