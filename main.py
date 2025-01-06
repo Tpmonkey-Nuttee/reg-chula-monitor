@@ -42,6 +42,17 @@ class Article:
         m.update(bytes(self.url, 'utf-8'))
         return m.hexdigest()
 
+    def __repr__(self) -> str:
+        return f"Article({self.name=})"
+
+    def __hash__(self) -> int:
+        return int(self.to_hash(), 16)
+
+    def __eq__(self, value: object) -> bool:
+        if isinstance(value, Article):
+            return self.to_hash() == value.to_hash()
+        return False
+
 
 r = req.get(url=URL, verify=False)
 soup = BeautifulSoup(r.text, "html.parser")
@@ -61,7 +72,7 @@ for div in soup.find_all("div", {"class": "wp-block-post-date"}):
 
 
 old_articles: list[str] = json.load(open('articles.json', 'r')) or []
-new_articles = [i for i in articles if i.to_hash() not in old_articles]
+new_articles = list(set(i for i in articles if i.to_hash() not in old_articles))
 
 print(f"Found {len(new_articles)} new articles!")
 
@@ -78,6 +89,9 @@ for webhook_url in webhook_urls:
         embed.set_image(url="attachment://img.png")
         # https://github.com/lovvskillz/python-discord-webhook/blob/master/discord_webhook/webhook.py#L90
         embed.timestamp = article.date
+
+        if DEBUG:
+            embed.set_title("- DEBUG MODE -")
 
         webhook.add_embed(embed)
 
